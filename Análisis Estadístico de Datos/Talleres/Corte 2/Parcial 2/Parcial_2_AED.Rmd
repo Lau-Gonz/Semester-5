@@ -1,0 +1,153 @@
+---
+title: "Parcial_2_AED"
+author: "Laura Valentina Gonzalez Rodriguez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Primera Parte
+
+"Penguins" es un conjunto de datos que contiene información acerca de tres especies diferentes de pingüinos respecto a diferentes variables, recolectados a partir de tres islas en el archipiélago Palmer, en la Antártida (1=Torgersen, 2=Biscoe, 3=Dream). Las variables que se midieron fueron la longitud del pico (bill length), la profundidad del pico (bill depth) y la longitud de la aleta (flipper length) para tres especies diferentes de pingüinos (1=Adelie, 2=Gentoo, 3=Chinstrap). Cargue este conjunto de datos con load("penguins.RData").
+
+```{r}
+load("penguins.RData")
+```
+
+### a) Haga una regresion lineal para predecir la variable bill length a partir de las otras.
+
+```{r}
+model = lm(bill_length_mm ~ species + island + bill_depth_mm + flipper_length_mm + sex, data = penguins2)
+summary(model)
+```
+
+#### ¿Que variables son significativas para explicar la variable bill length? En caso de que no lo sean todas, ¿cual es el modelo final en el que todas las variables son significativas?
+
+No todas las variables son significativas para explicar la variable **bill_length_mm** (longitud del pico). La variable "species", "flipper_length_mm" y "sex" son significativas (p-valores < 0.05), mientras que "island" y "bill_depth_mm" no lo son (p-valores > 0.05). Por lo tanto, un modelo final con todas las variables significativas incluiría solo "species", "flipper_length_mm" y "sex" como predictores de la longitud del pico.
+
+lm(bill_length_mm ~ species + flipper_length_mm + sex, data = penguins2)
+
+#### Si quisiera predecir la variable bill lenght con una sola variable, ¿cual deberia elegir?
+
+Para elegir la variable más adecuada para predecir la variable "bill length" con una sola variable, se hace la revisión de los coeficientes de regresión del modelo original. Particularmente, el valor más alto en la regresión es **species** (Estimate = 4.63266, p-valor < 2e-16), lo que sugiere que la especie es un buen predictor de la longitud del pico.
+
+### b) ¿Hay diferencias físicas significativas entre los pinguinos de las diferentes islas?
+
+Para mirar si hay diferencias físicas significativas entre los pinguinos de las diferentes islas, se realizara un análisis de varianza multivariado (MANOVA) para comparar los valores medios de varias variables continuas entre los grupos de islas.
+
+```{r}
+fit = manova(cbind(bill_length_mm, bill_depth_mm, flipper_length_mm) ~ island, data = penguins2)
+summary(fit)
+```
+
+Para este caso, se tiene que $Pr(>F) = 2.2e-16 =  0.00000000000000022$, si se considera un $\alpha=0.05$, se tiene que $Pr(>F)<\alpha$ por lo cuál se rechaza H0. En otras palabras, todas las variables fisicas de los pinguinos son significativamente diferentes entre islas.
+
+### c) Haga un analisis de componentes principales.
+
+```{r}
+pca <- prcomp(penguins2, scale=TRUE);
+pca
+```
+
+#### ¿Con cuantas componentes principales se puede explicar mas del 80 % de la variabilidad total de los datos?
+
+```{r}
+valores_propios = pca$sdev^2; valores_propios
+var_explicada = valores_propios / sum(valores_propios); var_explicada
+var_acumulada = cumsum(var_explicada); var_acumulada
+porcentaje = 0.8
+n_componentes = which(var_acumulada > porcentaje)[1]; n_componentes
+```
+
+Para poder explicar mas del 80% de la varibilidad total de los datos se necesitan usar 3 componentes, la primera componente aporta solo el 0.46623947, la segunda aporta un 0.25190743 y la tercera aporta un 0.16576788, la suma de estas tres da como resultado un 0.8839148, el valor más cercano superiormente al 0.8 deseado.
+
+#### ¿Que variable tiene mas influencia en la variabilidad explicada por la primera componente principal?
+
+```{r}
+pca
+```
+
+Para la primera componente principal **PC1** la variable que tiene mayor variablilidad es la de mayor valor absoluto de carga. En este caso **flipper_length_mm** es la que tiene una mayor variablidad, con un valor de carga de 0.5205815.
+
+## Segunda Parte
+
+La base de datos "MLBstats" tiene información sobre los diferentes equipos de la liga de béisbol de Estados Unidos. Las variables son: salario medio de cada equipo, porcentaje de victorias, porcentaje de bateo promedio, promedio de carreras, errores totales y si clasificaron o no a la postemporada (1=sí, 0=no). Cargue la base de datos asegurándose de que la variable "salary" sea numérica.
+
+```{r}
+mlbstats <- read.csv("MLB_stats.csv", sep = ";")
+```
+
+### a) Haga un análisis de componentes principales con las variables estandarizadas y sin estandarizar.
+
+Análisis de componentes principales con las variables estandarizadas:
+
+```{r}
+var_estand = prcomp(mlbstats[, -1], scale = TRUE);var_estand
+```
+
+Análisis de componentes principales sin las variables estandarizadas
+
+```{r}
+var_normal = prcomp(mlbstats[, -1], scale = FALSE);var_normal
+```
+
+#### ¿Cuál de los dos analisis es mas adecuado en este caso? ¿Por que?
+
+Al realizar el análisis de componentes principales con las variables estandarizadas, se puede comparar la importancia relativa de cada variable en términos de su contribución a la varianza total. Aparte de asegurar que todas las variables tengan la misma influencia en el análisis.  
+
+Principalmente al no haber estandarizado las variables, las magnitudes de las desviaciones estándar y de los valores propios de la matriz de correlación son muy distintas. Esto indica que la escala en la que se miden las variables afecta la varianza de los componentes principales, lo que dificulta la interpretación de los mismos. Además, la carga en cada componente también es difícil de interpretar, ya que está influenciada por la escala de cada variable.
+
+Particularmente, en el análisis sin estandarización, la variable "Mean...Salary" tiene una desviación estándar mucho más grande que las otras variables, lo que indica que esta variable está dominando el análisis y puede estar sesgando los resultados.
+
+Por lo tanto, en este caso, el análisis de componentes principales con las variables estandarizadas es más adecuado, ya que permite comparar de manera más equitativa la importancia relativa de cada variable y obtener resultados más precisos y confiables.
+
+#### ¿Con cuantas componentes recomienda quedarse? ¿Por que?
+
+```{r}
+valores_propios = var_estand$sdev^2; valores_propios
+```
+
+Utilizando el criterio de Kaiser-Guttman, se recomienda retener las componentes principales con valores propios mayores que 1 según el criterio de 1. Para este caso, solo se cumple para 2.85706688, 1.54629367. Se recomienda retener solo esas dos componentes.
+
+```{r}
+var_explicada = valores_propios / sum(valores_propios);var_explicada
+var_acumulada = cumsum(var_explicada); var_acumulada
+```
+
+Otra fomra de decidir con cuantas componentes se debe quedar, es tener encuenta el porcentaje de variabilidad de los datos que se desea explicar. Este es subjetivo a lo que se dese en el estudio, pero en general, es la suma de la variabilidad explicada de cada componente. Particularmente, se desea que este entre un $80\%$ y $90\%$ porque se considera que es un buen equilibrio entre la cantidad de información retenida y la cantidad de información perdida. Teniendo en cuenta lo anterior, ese porcentaje se logra con 3 componentes, teniendo un porcentaje de variabilidad del $89,03471\%$.
+
+#### Grafique los scores (valores de las observaciones en las componentes principales) en las dos primeras componentes. ¿Que equipos son los más similares? ¿Y los más diferentes? Justifique su respuesta.
+
+```{r}
+scores <- predict(var_estand, newdata = mlbstats[, -1])[, 1:2]
+mlbstats_scores <- cbind(mlbstats[, 1], scores)
+
+plot(scores[, 1], scores[, 2], xlab = "Componente principal 1", ylab = "Componente principal 2", xlim = c(-4, 3), ylim = c(-2, 3))
+text(scores[, 1], scores[, 2], labels = mlbstats_scores[, 1], pos = 3, cex = 0.5)
+```
+
+Para analizar los equipos más similares y diferentes en el gráfico de componentes principales, se necesita observar la distancia entre los puntos en el gráfico. Los puntos que están más cerca entre sí son los equipos más similares, mientras que los puntos que están más alejados son los equipos más diferentes.
+
+Particularmente podemos afirmar que hay algunos grupos de equipos que se encuentran cerca entre sí. Por ejemplo, los equipos Chicago Cubs, Toronto Blue Jays, Miami Marlins, Cleveland Indians,  se encuentran cerca en la parte inferior izquierda del gráfico, lo que indica que tienen valores similares en las dos primeras componentes principales. Otro grupo de equipos que se encuentran cerca son los Atlanta Braves, Washington Nationals, Cincinnati Reds, que se encuentran en la parte superior derecha del gráfico.
+
+Por otro lado, hay algunos equipos que se encuentran muy alejados de los demás, como los Houston Astros, Colorado Rockies, Boston Red Sox y Philadelphia Phillies que se encuentran en los extremos opuestos del gráfico. Esto indica que estos equipos tienen valores muy diferentes en las dos primeras componentes principales.
+
+### b) Haga una regresion lineal con para predecir el salario promedio dependiendo de las otras variables.
+
+```{r}
+lm_model <- lm(Mean...Salary ~ Pct..Wins + Batting.Avg. + Earned.Run.Avg. + Errors + PlayOff, data = mlbstats)
+summary(lm_model)
+```
+
+#### ¿Que porcentaje de la variabilidad de Y explica el modelo planteado?
+
+El modelo planteado tiene un R-cuadrado ajustado de 0.2983. Esto significa que el 29.83% de la variabilidad en la variable de respuesta, **Mean...Salary**, se puede explicar por las variables predictoras incluidas en el modelo. El R-cuadrado ajustado es una medida de cómo de bien las variables predictoras ajustan el modelo a los datos, teniendo en cuenta la cantidad de variables predictoras incluidas. En este caso, significa que el modelo es capaz de explicar aproximadamente el 30% de la variabilidad en el salario promedio.
+
+#### ¿Todas las variables son significativas?
+
+Las variables Batting.Avg. y Errors tienen valores p de 0.0132 y 0.0169, respectivamente, lo que indica que son significativas al nivel de significancia del 0.05. Esto significa que podemos rechazar la hipótesis nula de que el coeficiente para estas variables es igual a cero, lo que sugiere que hay una relación estadísticamente significativa entre estas variables y la variable de respuesta "ean_Salary.
+
+Sin embargo, las variables Pct..Wins, Earned.Run.Avg. y PlayOff  tienen valores p de 0.4812, 0.6862 y 0.7745, respectivamente, lo que indica que no son significativas al nivel de significancia del 0.05. Esto significa que no podemos rechazar la hipótesis nula de que el coeficiente para estas variables es igual a cero, lo que sugiere que no hay una relación estadísticamente significativa entre estas variables y la variable de respuesta Mean_Salary.

@@ -1,0 +1,595 @@
+---
+title: "Taller 2 Análisis Estadístico de Datos"
+output: 
+  html_document: default
+  pdf_document: default
+date: "2023-02-24"
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, fig.align = "center", fig.width = 5, fig.height = 4)
+packages = c("plot3D", "rgl", "Matrix", "reticulate")
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+```
+
+## Integrantes
+
+-   Diryon Yonith Mora Romero
+-   Fabio Andrés Rizo Montoya
+-   Laura Valentina González Rodríguez
+
+## Funciones y librerias
+
+```{r}
+library(plot3D)
+library(rgl)
+library(Matrix)
+
+# Population
+covariance_matrix <- function(x){ 
+  tamamio = c(nrow(x),ncol(x))
+  cova <- matrix(0,nrow = tamamio[2], ncol = tamamio[2]);cova
+  x_var = colMeans(x) 
+  for (i in 1:tamamio[2]){ 
+    for ( j in 1:tamamio[2]){ 
+      sum = 0
+      for (k in 1:tamamio[1]){
+        sum = sum + (x[k,i]-x_var[i])*(x[k,j]-x_var[j])
+      }
+      cova[i,j] = sum / tamamio[1]
+    } 
+  }
+  return(cova)
+} 
+# Sample
+variance_sample <- function(x){ 
+  return(cov(x))
+} 
+
+des_espectral <- function(A){
+  ro = nrow(A);  lambda <- eigen(A);
+  n = length(lambda);
+  Result = 0;
+  for (i in 1:n) {
+    print(sprintf("El %d valor propio de la matriz es: %g", i, lambda$values[i]))
+    vect_pro <- matrix(c(lambda$vectors[,i]), nrow = ro, ncol = 1);
+    print(sprintf("El vector propio es %s.", toString(vect_pro)))
+    print(sprintf("Obteniendo la matriz %d :", i))
+    Opera = lambda$values[i]*vect_pro%*%t(vect_pro);
+    print(Opera)
+    Result = Result + Opera;
+  }
+  print("El resultado de sumar las matrices x' es:")
+  print(Result)
+  return(Result)
+}
+
+Lengt <- function(x){ 
+  n = length(x); 
+  value = 0; 
+  for( i in 1:n){ 
+    value = value + (x[i])^2; 
+  } 
+  return(sqrt(value)) 
+} 
+
+dd_dot <- function(x,y){ 
+  return(x%*%y) 
+}
+
+# Installar sympy en la terminal de RStudio
+# pip3 install sympy
+
+py_install(packages = c("sympy"), pip = TRUE)
+
+```
+
+## Punto 1
+
+Dadas las 5 medidas sobre las variables $x_1$, $x_2$ y $x_3$.
+
+```{r}
+x1= c(9,2,6,5,8);
+x2= c(12,8,6,4,10);
+x3=c(3,4,0,2,1);
+X <- cbind(x1,x2,x3);
+kable(X)
+```
+La matriz $\bar{X}$ es:
+
+```{r}
+colMeans <- colMeans(X);
+kable(colMeans)
+```
+La matriz $S_n$ es:
+
+```{r}
+S = covariance_matrix(X);
+kable(S)
+
+cov(S)
+```
+
+La matriz $R$ es:
+
+```{r}
+Correlation = cor(X);
+kable(Correlation)
+```
+
+## Punto 2
+
+Sea $x'=[5, 1, 3]$ y $y'=[-1, 3, 1]$.
+
+### Punto 2.a) 
+
+Grafique los dos vectores.
+
+```{r}
+x <- c(5, 1, 3)
+y <- c(-1, 3, 1)
+origin <- c(0,0,0)
+
+x0 = c(0, 0)
+y0 = c(0, 0)
+z0 = c(0, 0)
+cols <- c('red','blue')
+
+x1 = c(5, -1)
+y1 = c(1, 3)
+z1 = c(3, 1)
+
+arrows3D(x0, y0, z0, x1, y1, z1,  col = cols, lwd = 2, d = 5,  
+         main = "Arrows 3D", bty ="g", ticktype = "detailed", xlim = c(0,6), 
+         ylim = c(0,4), zlim = c(0,4))
+points3D(x0, y0, z0, add = TRUE, col="darkred", 
+         colkey = FALSE, pch = 19, cex = 1)
+text3D(x1, y1, z1, c("X", "Y"), colvar = NULL, col = cols, add=TRUE, colkey = FALSE)
+```
+
+### Punto 2.b) 
+
+Encontrar:
+
+#### Punto 2.b.i)
+
+La longitud de x.
+```{r}
+Lx = Lengt(x);Lx
+```
+
+#### Punto 2.b.ii) 
+
+El ángulo entre $x$ y $y$.
+
+```{r}
+Ly = Lengt(y);
+x_y = x1[1]*x1[2]+y1[1]*y1[2]+z1[1]*z1[2];
+theta = acos(x_y/(Lx*Ly))*180/pi;theta
+```
+
+#### Punto 2.b.iii) 
+
+La proyección de y en x.
+
+```{r}
+x_com<-c(5,1,3)
+Pro_y_x = (x_y*x_com)/(Lx*Lx);Pro_y_x
+```
+
+### Punto 2.c) 
+
+Dado que $\bar{x}=3$ y $\bar{y}=1$. Grafique $x'=[2,-2,0]$ y $y'=[-2,2,0]$
+
+```{r}
+x1 = c(2, -2)
+y1 = c(-2, 2)
+z1 = c(0, 0)
+x0 = c(0, 0)
+y0 = c(0, 0)
+z0 = c(0, 0)
+
+cols <- c('black','green')
+
+arrows3D(x0, y0, z0, x1, y1, z1,  col = cols, lwd = 2, d = 3,  
+         main = "Arrows 3D", bty ="g", ticktype = "detailed", xlim = c(-3,6), 
+         ylim = c(-3,4), zlim = c(0,4))
+points3D(x0, y0, z0, add = TRUE, col="darkred", 
+         colkey = FALSE, pch = 19, cex = 1)
+text3D(x1, y1, z1, c("X'", "Y'"), colvar = NULL, col = cols, add=TRUE, colkey = FALSE)
+```
+
+
+## Punto 3
+
+Dada la matriz
+
+```{r}
+A <- rbind(c(9,-2),c(-2,6));A
+```
+
+### Punto 3.a) 
+
+¿Es $A$ una matriz simétrica?
+
+```{r}
+A_tran <- t(A);
+kable(A_tran);
+```
+
+Como se puede observar la matriz es la misma respecto a su transpuesta, por lo tanto es simetrica.
+
+### Punto 3.b) 
+Muestre que $A$ es definida positiva.
+
+Una matriz es definida positiva, Si todos los autovalores son positivos, la matriz es definida positivamente. Si hay autovalores negativos o cero, la matriz no es definida positivamente.
+
+```{r}
+lambda <- eigen(A);
+lambda$values;
+```
+
+Note que todos sus autovalores son positivos, por lo tanto es definida positivamente.
+
+### Punto 3.c)
+
+Determine los valores y vectores propios de $A$.
+
+```{r}
+eig<- eigen(A)
+eig$values
+eig$vectors
+```
+
+### Punto 3.d) 
+
+Encuentre la descomposición espectral de $A$.
+
+```{r}
+des_a = des_espectral(A);
+```
+
+
+### Punto 3.e) 
+
+Determine la inversa de $A$.
+
+```{r}
+A_in <- solve(A);
+kable(A_in);
+```
+
+### Punto 3.f) 
+
+Descomposicion de $A^{-1}$.
+
+```{r}
+Des_E=des_espectral(A_in);
+```
+
+## Punto 4
+
+Verificar la relaciones $V^{1/2} \rho V^{1/2} = \Sigma$ y $\rho = (V^{1/2})^{-1} \Sigma (V^{1/2})^{-1}$, donde $\Sigma$ es el $p \times p$ matriz de covarianza poblacional, $\rho$ es la matriz de correlación poblacional $p \times p$ y $V^{1/2}$ es la matriz de desviación estándar de la población.
+
+Para verificar la relación $V^{1/2} \rho V^{1/2} = \Sigma$, necesitamos demostrar que ambos lados de la ecuación son iguales.
+
+Comencemos con el lado izquierdo: $V^{1/2} \rho V^{} = (V^{1/2} \rho) (V^{1/2}) = (V^{1/2} (\rho V^{1/2}))$ ... (asociatividad de la multiplicación de matrices) $= (V^{1/2} (V^{-1/2} \Sigma V^{-1/2}) V^{1/2})$ ... (definición de $\rho$ en términos de $\Sigma$ y $V^{-1/2}$) $= \Sigma$
+
+Por lo tanto, hemos demostrado que $V^{1/2} \rho V^{1/2} = \Sigma$.
+
+Para demostrar que $\rho = (V^{1/2})^{-1} \Sigma (V^{1/2})^{-1}$, comencemos con el lado derecho: $(V^{1/2})^{-1} \Sigma (V^{1/2})^{-1} = (V^{-1/2} V^{1/2})^T \Sigma (V^{-1/2} V^{1/2})^T$ ... (propiedad de la inversa de una matriz) $= (V^{1/2})^T (V^{-1})^T \Sigma V^{-1/2} V^{1/2}$ ... (propiedad de la traspuesta) $= V^{1/2} \Sigma V^{-1} V^{-1/2}$ ... (propiedad de la inversa de una matriz) $= V^{1/2} (V^{-1/2} \rho V^{-1/2}) V^{1/2}$ ... (definición de $\Sigma$ en términos de $\rho$ y $V^{-1/2}$) $= \rho$
+
+Por lo tanto, hemos demostrado que $\rho = (V^{1/2})^{-1} \Sigma (V^{1/2})^{-1}$.
+
+
+## Punto 5
+
+Derive las expresiones para la media y las varianzas de las siguientes combinaciones lineales en términos de las medias y covarianzas de las variables aleatorias $X_1$, $X_2$ y $X_3$.
+
+Para las siguientes combinaciones lineales de variables aleatorias, utilizaremos las siguientes propiedades de la esperanza y la varianza:
+
+- Linealidad de la esperanza: $E(aX + bY) = aE(X) + bE(Y)$, donde $a$ y $b$ son constantes.
+- Propiedades de la covarianza: $\text{Cov}(X,Y) = E(XY) - E(X)E(Y)$, $\text{Cov}(X,X) = \text{Var}(X)$.
+
+- $X_1 - 2X_2$:
+  - Media: $E(X_1 - 2X_2) = E(X_1) - 2E(X_2)$
+  - Varianza: $\text{Var}(X_1 - 2X_2) = \text{Var}(X_1) + 4\text{Var}(X_2) - 4\text{Cov}(X_1,X_2)$
+
+- $-X_1 + 3X_2$:
+  - Media: $E(-X_1 + 3X_2) = -E(X_1) + 3E(X_2)$
+  - Varianza: $\text{Var}(-X_1 + 3X_2) = \text{Var}(X_1) + 9\text{Var}(X_2) - 6\text{Cov}(X_1,X_2)$
+
+- $X_1 + X_2 + X_3$:
+  - Media: $E(X_1 + X_2 + X_3) = E(X_1) + E(X_2) + E(X_3)$
+  - Varianza: $\text{Var}(X_1 + X_2 + X_3) = \text{Var}(X_1) + \text{Var}(X_2) + \text{Var}(X_3) + 2[\text{Cov}(X_1,X_2) + \text{Cov}(X_1,X_3) + \text{Cov}(X_2,X_3)]$
+
+- $X_1 + 2X_2 - X_3$:
+  - Media: $E(X_1 + 2X_2 - X_3) = E(X_1) + 2E(X_2) - E(X_3)$
+  - Varianza: $\text{Var}(X_1 + 2X_2 - X_3) = \text{Var}(X_1) + 4\text{Var}(X_2) + \text{Var}(X_3) - 4[\text{Cov}(X_1,X_2) + \text{Cov}(X_1,X_3) + \text{Cov}(X_2,X_3)]$
+
+- $3X_1 - 4X_2$ (si $X_1$ y $X_2$ son variables aleatorias independientes):
+  - Media: $E(3X_1 - 4X_2) = 3E(X_1) - 4E(X_2)$
+  - Varianza: $Var(3X_1 - 4X_2) = 9Var(X_1) + 16Var(X_2)$
+
+## Punto 6
+
+Dada la matriz de datos
+
+```{r}
+x <- cbind(c(4,-1,3),c(1,3,5));x 
+```
+
+### Punto 6.a)
+
+Grafique el diagrama de dispersión en p = 2 dimensiones. Localice la media de la muestra en su diagrama.
+
+```{r}
+means <- colMeans(x);means 
+plot(x = x[,1], y = x[,2], xlim = c(-2,5), ylim = c(-0,7)) 
+points(means[1],means[2], pch=8)
+legend("topright", legend = c("Media"), pch = c(8))
+```
+
+### Punto 6.b)
+
+Dibuje la representación n = 3 -dimensional de los datos y trace los vectores de desviación $y_1-\bar{x}_11$ y $y_2-\bar{x}_21$.
+
+
+```{r}
+x_t = t(x);
+d1 = x_t[1,] - means[1]*c(1,1,1);
+d2 = x_t[2,] - means[2]*c(1,1,1);        
+x1 = c(x_t[1,1],x_t[2,1],d1[1],d2[1]); 
+y1 = c(x_t[1,2],x_t[2,2],d1[2],d2[2]); 
+z1 = c(x_t[1,3],x_t[2,3],d1[3],d2[3]); 
+x0 = c(0, 0, 0, 0); 
+y0 = c(0, 0, 0, 0); 
+z0 = c(0, 0, 0, 0); 
+cols <- c('red','blue','green','orange') 
+arrows3D(x0, y0, z0, x1, y1, z1,  col = cols, 
+         lwd = 2, d = 3,  main = "Arrows 3D", bty ="g", ticktype = "detailed") 
+points3D(x0, y0, z0, add = TRUE, col="darkred",  
+         colkey = FALSE, pch = 19, cex = 1) 
+text3D(x1, y1, z1, c("Y1","Y2","D1","D2"), colvar = NULL, col = cols, add=TRUE, colkey = FALSE)
+```
+
+### Punto 6.c)
+
+Dibuje los vectores de desviación en (b) que emanan del origen.  
+
+```{r}
+x1 = c(d1[1],d2[1]); 
+y1 = c(d1[2],d2[2]); 
+z1 = c(d1[3],d2[3]); 
+x0 = c(0, 0); 
+y0 = c(0, 0); 
+z0 = c(0, 0); 
+cols <- c('green','orange') 
+arrows3D(x0, y0, z0, x1, y1, z1,  col = cols, 
+         lwd = 2, d = 3,  main = "Arrows 3D", bty ="g", ticktype = "detailed",
+         xlim = c(-3,3), ylim = c(-4,1),zlim=c(0,4)) 
+points3D(x0, y0, z0, add = TRUE, col="darkred",  
+         colkey = FALSE, pch = 19, cex = 1) 
+text3D(x1, y1, z1, c("D1","D2"), colvar = NULL, col = cols, add=TRUE, colkey = FALSE)
+```
+
+Calcula las longitudes de estos vectores y el coseno del ángulo entre ellos.
+
+```{r}
+Ld1= Lengt(d1); Ld1 
+Ld2 = Lengt(d2); Ld2 
+d1_d2 = x1[1]*x1[2]+y1[1]*y1[2]+z1[1]*z1[2]; 
+cos_theta = d1_d2/(Ld1*Ld2);cos_theta 
+```
+
+Relacione estas cantidades con $S_n$ y $R$.
+
+Note que $d_x'dy = n \cdot s_{xy}$, donde $n$ es la dimensionalidad de las variables. Por lo cuál al realizar todas las conbinaciones posibles de la matriz $n \times n$ y dividirlas por la $n$-dimensionalidad, se obtentra la misma matriz de varianzas y covarianzas.
+
+```{r}
+dd11 = dd_dot(d1,d1); 
+dd12 = dd_dot(d1,d2); 
+dd21 = dd_dot(d2,d1); 
+dd22 = dd_dot(d2,d2); 
+s11 =  dd11/3;  
+s12 =  dd12/3; 
+s21 =  dd21/3; 
+s22 =  dd22/3; 
+vars <- rbind(c(s11,s12),c(s21,s22));vars 
+```
+
+Note que esta matriz es la misma que la matriz de varianzas y covarianzas.
+
+```{r}
+covariance_matrix(x)
+```
+
+Adicionalmente, sabemos que $r_{xy}=\frac{s_{xy}}{\sqrt{r_{xx}}\cdot\sqrt{r_{yy}}}$. Por lo cuál podemos reemplazar los valores obtenidos anteriormente para realizar la matriz:
+
+```{r}
+r11 =  s11/(sqrt(s11)*sqrt(s11));  
+r12 =  s12/(sqrt(s11)*sqrt(s22));  
+r21 =  s21/(sqrt(s22)*sqrt(s11));   
+r22 =  s22/(sqrt(s22)*sqrt(s22));   
+vars <- rbind(c(r11,r12),c(r21,r22));vars 
+```
+
+Note que esta matriz es la misma que la matriz de correlación.
+
+```{r}
+cor(x)
+```
+
+### Punto 6.d)
+
+Calcular la varianza muestral generalizada $|S|$.
+
+```{r}
+S = variance_sample(x);S
+det(S)
+```
+
+## Punto 7
+
+**Demuestre que $|S| = (s_{11}s_{22}\cdot\cdot\cdot s_{pp})|R|$**
+
+Tenemos que $|S| = |D^{1/2} \cdot R \cdot D^{1/2}| = |D^{1/2}| \cdot |R| \cdot |D^{1 / 2}|$, donde $D^{1/2} = \left\{d_{ii} = \sqrt{s_{ii}} \right\}$ una matriz diagonal $pxp$.
+
+Como $D^{1/2}$ es diagonal, entonces $|D^{1/2}| = \prod_{i = 1}^{p} \left(\sqrt{s_{ii}}\right)$
+
+Por tanto, $|D^{1/2}| \cdot |R| \cdot |D^{1 / 2}| = \prod_{i = 1}^{p} \left(\sqrt{s_{ii}}\right) \cdot |R| \cdot \prod_{i = 1}^{p} \left(\sqrt{s_{ii}}\right) = \prod_{i = 1}^{p} \left(s_{ii}\right) \cdot |R|$
+
+## Punto 8
+
+**Sea $V$ una variable aleatoria vectorial con un vector medio $E(V)= \mu_v$, y una matriz de covarianza $E(V - \mu_v)(V - \mu_v)' = \sum_v$. Demuestre que $E(VV') = \sum_v + \mu_v\mu'_v$**
+
+Tenemos que $E(VV')= \begin{bmatrix} E(v_1^2) & ... & E(v_1\cdot v_p) & \\ \vdots & \vdots & \vdots \\ E(v_p * v_1) & ... & E(v_p^2)&\end{bmatrix}$.
+
+Por otra parte, por definición de varianza y covarianzas, tenemos:
+
+\begin{aligned}
+
+\Sigma_m + \mu_v\mu'_v
+
+&= \begin{bmatrix} 
+  \sigma_{11} + E(v_1)^2 & ... & \sigma_{1p} + E(v_1)\cdot E(v_p)\\
+  \vdots & \vdots & \vdots \\
+  \sigma_{p1} + E(v_p)\cdot E(v_1) & ... & \sigma_{pp} + E(v_p)^2\end{bmatrix} \\
+
+&= \begin{bmatrix} 
+  E(v_1^2) - E(v_1)^2 + E(v_1)^2 & ... & E(v_1\cdot v_p) - E(v_1)\cdot E(v_p) + E(v_1)\cdot E(v_p) \\
+  \vdots & \vdots & \vdots \\
+  E(v_p\cdot v_1) + E(v_p)\cdot E(v_1) - E(v_p)\cdot E(v_1) & ... & E(v_p^2) - E(v_p)^2 + E(v_p)^2
+\end{bmatrix} \\
+
+&= \begin{bmatrix}
+  E(v_1^2) & ... & E(v_1 \cdot v_p) \\
+  \vdots & \vdots & \vdots \\
+  E(v_p \cdot v_1) & ... & E(v_p^2)
+\end{bmatrix}
+
+
+\end{aligned}
+
+Por tanto, $\Sigma_m + \mu_v\mu'_v = E(VV')$
+
+## Punto 9
+
+Considere una distribución normal bivariada con $\mu_1$ = 1, $\mu_2$ = 3, $\sigma_{11}$ = 2, $\sigma_{22}$ = 1 y $\rho_{12}$ = −.8
+
+a) Escriba la densidad normal bivariada.
+a) Escriba la expresión de distancia estadıstica al cuadrado $(x - \mu)'\Sigma^{-1}(x - \mu)$ como una función cuadrática de $x_1$ y $x_2$
+
+
+### Punto 9.a
+
+Tenemos que la función de densidad normal bivariada está dada por:
+
+$$
+f(x_1,x_2) = \frac{1}{2\pi\sigma_{11}\sigma_{22}\sqrt{1-\rho_{12}^2}} \exp\left[-\frac{1}{2(1-\rho_{12}^2)} \left\lbrace \frac{(x_1-\mu_1)^2}{\sigma_{11}^2} - \frac{2\rho_{12}(x_1-\mu_1)(x_2-\mu_2)}{\sigma_{11}\sigma_{22}} + \frac{(x_2-\mu_2)^2}{\sigma_{22}^2} \right\rbrace \right]
+$$
+
+Donde:
+
+- $\mu_1$ y $\mu_2$ son las medias de las variables X1 y X2 respectivamente.
+- $\sigma_11$ y $sigma_22$ son las varianzas de las variables X1 y X2 respectivamente.
+- $\rho_{12}$ es la correlación entre las variables X1 y X2.
+
+Reemplazando los valores solicitados en python:
+
+```{python}
+import sympy as sym
+
+x1, x2 = sym.symbols('x1 x2')
+mu1, mu2 = 1, 3
+sigma1, sigma2 = 2, 1
+rho = -0.8
+
+density = sym.exp(-1/(2*(1-rho**2))*((x1-mu1)**2/sigma1**2 - 2*rho*(x1-mu1)*(x2-mu2)/(sigma1*sigma2) + (x2-mu2)**2/sigma2**2)) / (2*sym.pi*sigma1*sigma2*sym.sqrt(1-rho**2))
+
+density = sym.simplify(density)
+density_str = sym.latex(density)
+```
+
+Tenemos que $f(x_1, x_2) = `r py$density_str`$
+
+
+### Punto 9.b
+
+Tenemos que
+
+$$
+\Sigma = \begin{bmatrix}
+  \sigma_{11}^2 & \rho_{12}\sigma_{11}\sigma_{22} \\
+  \rho_{12}\sigma_{11}\sigma_{22} & \sigma_{22}^2
+\end{bmatrix}
+$$
+
+y 
+
+$$
+x - \mu = \begin{bmatrix}
+  x_1 - \mu_1 \\
+  x_2 - \mu_2
+\end{bmatrix}
+$$
+
+Por tanto,
+
+$$
+
+\begin{aligned}
+\Sigma^{-1} &= \begin{bmatrix}
+  \frac{1}{\sigma_{11}^2 - \rho_{12}^2\sigma_{11}^2} & -\frac{\rho_{12}}{\sigma_{11}\sigma_{22} - \rho_{12}^2\sigma_{11}\sigma_{22}} \\
+  -\frac{\rho_{12}}{\sigma_{11}\sigma_{22} - \rho_{12}^2\sigma_{11}\sigma_{22}} & \frac{1}{\sigma_{22}^2 - \rho_{12}^2\sigma_{22}^2}
+\end{bmatrix}  \\
+(x - \mu)'\Sigma^{-1} &= \begin{bmatrix}
+  (x_1 - \mu_1)\left(\frac{1}{\sigma_{11}^2 - \rho_{12}^2\sigma_{11}^2}\right) - (x_2 - \mu_2)\left(\frac{\rho_{12}}{\sigma_{11}\sigma_{22} - \rho_{12}^2\sigma_{11}\sigma_{22}}\right) 
+  & (x_1 - \mu_1)\left(\frac{\rho_{12}}{\sigma_{11}\sigma_{22} - \rho_{12}^2\sigma_{11}\sigma_{22}} \right) - (x_2 - \mu_2)\left(\frac{1}{\sigma_{22}^2 - \rho_{12}^2\sigma_{22}^2}\right)
+\end{bmatrix} \\
+(x - \mu)'\Sigma^{-1}(x - \mu) &= (x_1 - \mu_1)^2\left(\frac{1}{\sigma_{11}^2 - \rho_{12}^2\sigma_{11}^2}\right) - (x_1 - \mu_1)(x_2 - \mu_2)\left(\frac{\rho_{12}}{\sigma_{11}\sigma_{22} - \rho_{12}^2\sigma_{11}\sigma_{22}}\right) - (x_1 - \mu_1)(x_2 - \mu_2)\left(\frac{\rho_{12}}{\sigma_{11}\sigma_{22} - \rho_{12}^2\sigma_{11}\sigma_{22}} \right) + (x_2 - \mu_2)^2\left(\frac{1}{\sigma_{22}^2 - \rho_{12}^2\sigma_{22}^2}\right) \\
+(x - \mu)'\Sigma^{-1}(x - \mu) &= \frac{1}{1 - \rho_{12}^2} \left[\left(\frac{x_1 - \mu_1}{\sigma_{11}}\right)^2 - 2\rho_{12}\frac{(x_1 - \mu_1)(x_2 - \mu_2)}{(\sigma_{11}\sigma_{22})} + \left(\frac{x_2 - \mu_2}{\sigma_{22}}\right)^2\right]
+
+\end{aligned}
+
+$$
+
+Reemplazado, tendríamos que:
+
+$$
+  \frac{25}{9} \left[\left(\frac{x_1 - 1}{2} \right)^2 + \frac{4}{5}(x_1 - 1)(x_2 - 3) + \left(x_2 - 3\right)^2\right]
+$$
+
+## Punto 10
+
+Sea $X \sim N_3(\mu, \Sigma)$ con $\mu' = \begin{bmatrix}-3 & 1 & 4 \end{bmatrix}$ y
+
+$$
+\Sigma = \begin{bmatrix}
+  1 & -2 & 0 \\
+  -2 & 5 & 0 \\
+  0 & 0 & 2
+\end{bmatrix}
+$$
+
+¿Cuáles de las siguientes variables aleatorias son independientes?
+
+a. $X_1$ y $X_2$
+a. $X_2$ y $X_3$
+
+### Punto 10.a)
+
+Dado que $\sigma_{12} = Cov(X_1, X_2) = -2$, $X_1$ y $X_2$ no son independientes.
+
+### Punto 10.b)
+
+Dado que $\sigma_{23} = Cov(X_2, X_3) = 0$, $X_2$ y $X_3$ son independientes.

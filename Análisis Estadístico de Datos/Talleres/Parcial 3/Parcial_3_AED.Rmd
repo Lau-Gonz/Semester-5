@@ -1,0 +1,207 @@
+---
+title: "Tercer Parcial: Análisis Estadístico de Datos."
+author: "Dafne Valeria Castellanos Rosas y Laura Valentina Gonzalez Rodriguez."
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library(caret)
+library(dplyr)
+library(GGally)
+library(CCA)
+```
+
+## Definición de algunas funciones necesarias
+
+```{r}
+draw_confusion_matrix <- function(confusion_matrix) { # Función para dibujar bonito la matriz de confusión
+  total <- sum(confusion_matrix$table)
+  results <- as.numeric(confusion_matrix$table)
+  buena <- "#35ddff"
+  malo <- "#e5c8ff"
+  layout(matrix(c(1, 1, 1)))
+  par(mar = c(2, 2, 2, 2))
+  plot(c(120, 345), c(300, 450), type = "n", xlab = "", ylab = "", xaxt = 'n', yaxt = 'n')
+  title('Matriz de Confusión', cex.main = 2)
+  classes <- colnames(confusion_matrix$table)
+  rect(150, 430, 240, 370, col = ifelse(results[1] > 0, buena, "white"))
+  text(195, 435, classes[1], cex = 1.2)
+  rect(250, 430, 340, 370, col = ifelse(results[3] > 0, malo, "white"))
+  text(295, 435, classes[2], cex = 1.2)
+  text(125, 370, 'Predicción', cex = 1.3, srt = 90, font = 2)
+  text(245, 450, 'Real', cex = 1.3, font = 2)
+  rect(150, 305, 240, 365, col = ifelse(results[2] > 0, malo, "white"))
+  rect(250, 305, 340, 365, col = ifelse(results[4] > 0, buena, "white"))
+  text(140, 400, classes[1], cex = 1.2, srt = 90)
+  text(140, 335, classes[2], cex = 1.2, srt = 90)
+  text(195, 400, results[1], cex = 1.6, font = 2, col = 'white')
+  text(195, 335, results[2], cex = 1.6, font = 2, col = 'white')
+  text(295, 400, results[3], cex = 1.6, font = 2, col = 'white')
+  text(295, 335, results[4], cex = 1.6, font = 2, col = 'white')
+}
+
+```
+
+# Primer Punto
+
+**_La variable quality da la calidad de los vinos. Se dice que un buen vino es aquel que tiene más de 6 de nota en esa variable. El resto de vinos se consideran malos. Haga una clasificación utilizando discriminante de Fisher en el que clasifique entre buen vino y mal vino a partir de las demás variables._**
+
+```{r}
+# Preparación de Datos
+wine = read.csv("winequality-red.csv");
+wine = na.omit(wine) # Elimina filas con valores faltantes
+wine$great = ifelse(wine$quality > 6, 1, 0) # 1 es bueno, 0 es malo
+wine = wine %>% select(-quality) # Elimina la columna quality
+
+# División entre entrenamiento y prueba 80-20
+set.seed(1)
+indices <- sample(1:nrow(wine), 0.8 * nrow(wine))
+train <- wine[indices, ]
+test <- wine[-indices, ]
+
+# Discriminante de Fisher / Análisis Discriminante Lineal
+fishe = lda(great ~ ., data = train)
+```
+
+### Sección A
+
+_¿Cuál es la probabilidad previa estimada de pertenecer a cada una de las categorías?_
+
+```{r}
+fishe$prior
+```
+La salida indica que la clase 0 (Mal Vino) tiene una probabilidad previa estimada de 0.8655199, mientras que la clase 1 (Buen Vino) tiene una probabilidad previa estimada de 0.1344801. Estas probabilidades indican la proporción relativa de cada clase en los datos de entrenamiento. 
+
+### Sección B
+
+_Calcule la matriz de confusión y el APER._
+
+```{r}
+confusion_matrix_test <- confusionMatrix(predict(fishe, test)$class, as.factor(test$great));
+draw_confusion_matrix(confusion_matrix_test)
+```
+
+De dicha matriz podemos extraer que:
+
+- Verdaderos positivos (True Positives, TP): En la celda (0,0), se encuentran los casos en los que el modelo predijo correctamente la clase 0 (Mal Vino). Hay 265 casos en los que el modelo clasificó correctamente las instancias que realmente pertenecen a la clase 0.
+- Falsos positivos (False Positives, FP): En la celda (0,1), se encuentran los casos en los que el modelo predijo incorrectamente la clase 1 (Buen Vino cuando la clase real era 0. Hay 23 casos en los que el modelo clasificó erróneamente instancias que en realidad pertenecen a la clase 0.
+- Falsos negativos (False Negatives, FN): En la celda (1,0), se encuentran los casos en los que el modelo predijo incorrectamente la clase 0 cuando la clase real era 1. Hay 10 casos en los que el modelo clasificó erróneamente instancias que en realidad pertenecen a la clase 1.
+- Verdaderos negativos (True Negatives, TN): En la celda (1,1), se encuentran los casos en los que el modelo predijo correctamente la clase 1. Hay 22 casos en los que el modelo clasificó correctamente las instancias que realmente pertenecen a la clase 1.
+
+```{r}
+1 - confusion_matrix_test$overall['Accuracy']
+```
+
+Note que el APER, el Apparent Error Rate, esta definidido como
+
+$$
+APER = \frac{FP + FN}{TP + TN + FP + FN} = \frac{23+10}{288+32} = 0.103125 = 1 - Accuracy
+$$
+
+Significa que el modelo clasificó incorrectamente aproximadamente el 10.31% de las muestras en el conjunto de prueba.
+
+### Sección C
+
+_¿Cuál es la categoría más difícil de clasificar?_
+
+Para identificar la categoría más difícil de clasificar, se utiliza la métrica de Sensitivity o Recall. Esta métrica permite evaluar la capacidad del modelo para detectar correctamente los casos de una categoría específica, lo cual permite identificar cuál es la categoría más difícil de clasificar en términos de falsos negativos. Para este caso, se tiene que:
+
+$$
+{Sensitivity}_{Mal Vino} = \frac{TP}{TP+FN} = \frac{265}{265+10}=0.9636\\
+{Sensitivity}_{BuenVino} = \frac{TP}{TP+FN} = \frac{22}{22+23}=0.4889\\
+$$
+
+Comparando las sensibilidades, podemos observar que la sensibilidad de la categoría 0 (0.9636) es más alta que la sensibilidad de la categoría 1 (0.4889). Esto indica que el modelo tiene una mayor dificultad para clasificar correctamente los casos de la categoría 1 en comparación con los casos de la categoría 0. Así, es más dificil clasificar el buen vino.
+
+
+
+# Punto 2
+
+**_Divida la base de datos original en dos grupos de variables (los que quiera) para hacer dos particiones._**
+
+Para dividir el dataset de vinos en dos grupos de variables, se considero dividir las columnas en función de sus características químicas y físicas. Generando:        
+
+```{r}
+wine <- as.data.frame(scale(wine))
+grupo1 <- wine[, c("fixed.acidity", "volatile.acidity", "citric.acid", "residual.sugar", "chlorides")]
+grupo2 <- wine[, c("free.sulfur.dioxide", "total.sulfur.dioxide", "density", "pH", "sulphates", "alcohol")]
+```
+
+
+### Sección A
+
+_¿Cuál es la correlación más alta entre los dos grupos elegidos?_
+
+```{r}
+cca=cc(grupo1, grupo2)
+cca$cor
+```
+
+Podemos observar los coeficientes de correlación obtenidos a través del análisis de correspondencia canónica. Estos indican la relación entre las categorías de los grupos 1 y 2. Particularmente, podemos evidenciar que el más alto es 0.9334745, correspondiente a la primera componente de correlación canónica.
+
+### Sección B
+
+_¿Qué variable influye más en cada grupo en esa correlación?_
+
+```{r}
+cca_loadings = cca$scores
+cca_loadings[3:3]
+cca_loadings[6:6]
+```
+
+Considerando la primera componente de correlación canónica. Para el grupo 1 (X) la variable más influyente es **fixed.acidity** con un coeficiente de 0.9572964. Para el grupo 2 (Y) la variable más influyente es **density** con un coeficiente de 0.78371069.
+
+# Punto 3
+
+**Defina con sus palabras el p-valor**
+
+El p-valor es una medición estadística entre 0 y 1, usada en las pruebas de hipótesis, que indica la probabilidad mínima con la que se puede rechazar la hipótesis nula, suponiendo que esta sea cierta. Para calcular el p-valor se necesita del estadístico de contraste y la distribución del estadístico.
+
+Si se quiere determinar si se rechaza o se acepta la hipótesis nula, se siguen los siguientes enunciados:
+
+- Si el p-valor es menor que el nivel de significancia, entonces se rechaza la hipótesis nula.
+- Si el p-valor es mayor que el nivel de significancia, entonces no se tiene suficiente evidencia estadística para rechazar la hipótesis nula y se rechaza la alternativa.
+
+Ahora, lo anterior no significa que se pueda afirmar que una hipótesis sea cierta, pues cabe la posibilidad de cometer un error de rechazar la hipótesis nula cuando era verdad, o al contrario.
+
+# Punto 4
+
+**_¿Cuál o cuáles de las siguientes afirmaciones es correcta?_**
+
+### Sección A
+
+_Si hago un PCA puedo ver la correlación entre las variables, pero no me da información sobre la relación de las observaciones._
+
+Esta afirmación es **verdadera**. El PCA se realiza a través del cálculo de las componentes principales, que son una combinación lineal de las variables iniciales que explican la mayor variabilidad contenida en los datos. Si se analiza la contribución de las variables a los componentes, mediante los loadings, podremos encontrar como es la correlación entre las variables. 
+
+Otra forma, de analizar la correlación entre variables es evaluar cada componente principal y la cantidad de varianza que explica. Por ejemplo, es probable que dos variables estén correlacionadas si se encuentra que ambas tienen una alta varianza explicada por una misma componente.
+
+Sin embargo, el PCA no da directamente información de la relación entre observaciones. Si se desea estudiar dichas relaciones habría que utilizar otros métodos. Si bien es cierto, que graficando un Biplot podemos llegar a distinguir relaciones entre scores, estos son la distancia desde el origen a cada proyección, no son las observaciones como tal.
+
+### Sección B
+
+_Después de preguntar durante 2 años la definición de p-valor, por fin todos tendrán bien esa pregunta porque tienen una semana para responder._
+
+Esa afirmación es **correcta**, pues en esta ocasión poseemos de la ayuda de internet y tenemos una semana para responder dicha pregunta correctamente. Si alguien tiene mal esa pregunta, es porque quiso que fuera de esa forma.
+
+
+### Sección C
+
+_Millitos será campeón este año en Colombia._
+
+Esta afirmación es **falsa**. Según la empresa de estadística Matics, Nacional tiene un 25,7% de probabilidad de resultar campeón de la liga Betplay, y esta por encima de Millonarios que cuenta con un 25% de probabilidad de ganar. Así que, Millonarios deberá superar el rendimiento del equipo Antioqueño si quiere quedarse con el campeonato. Para dar el resultado de dichas probabilidades la empresa se baso en la siguientes variables: actuaciones recientes y de años anteriores, el calendario y la probabilidad de ganar, empatar o perder todos los partidos siguientes, teniendo en cuenta la sede y los rivales.
+
+### Sección D
+
+_Bad Bunny no sabe cantar._
+
+Esta afirmación es **afirmativa**, ya que el mismo cantante ha asegurado en entrevistas que no ha recibido formación en canto o musical de ningún tipo. Además, en diversos videos en donde él aparece cantando sin autotune, el puertorriqueño ha mostrado que sus habilidades de canto son mínimas o no las esperadas para un cantante profesional de talla mundial.
+
+# Punto 5
+
+**_Si hiciera una regresión lineal donde la variable respuesta es la cantidad de dinero que se gasta una persona en entradas a conciertos de Bad Bunny, y la variable explicativa es el gusto músical (númerica, siendo 0 muy mal gusto musical y 100 el mejor gusto posible). ¿El valor de β1 debería ser positivo o negativo? justifique su respuesta._**
+
+Si se considera que las personas a las cuales les gusta Bad Bunny tienen un gusto musical bajo, el valor de B1, es decir, la pendiente de la regresión lineal debería ser **negativo**. Pues a medida de que el buen gusto disminuya, se espera un aumento en la cantidad de dinero gastada en boletería. Presentándose así una relación inversa entre el gusto musical y el dinero gastado en entradas de los conciertos de Bad Bunny.

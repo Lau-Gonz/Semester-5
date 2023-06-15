@@ -1,0 +1,251 @@
+---
+title: "Taller 6 CCA"
+author: "Dafne Castellanos, Diryon Mora, Fabio Rizo y Laura Gonzalez"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preparaciones
+
+### CCA
+
+```{r}
+get_sqrt_inv = function(A) {
+  eig = eigen(A)
+  T = eig$vectors
+  J_inv_sqrt = diag(1 / sqrt(eig$values))
+  
+  M_inv_sqrt = T %*% J_inv_sqrt %*% solve(T)
+  return (M_inv_sqrt)
+}
+
+cca_2x2 = function(Sigma) {
+  p = 2
+  q = 2
+  
+  p11 = Sigma[1:p, 1:p]
+  p12 = Sigma[1:p, (q + 1):(q + p)]
+  p21 = Sigma[(q + 1):(q + p), 1:p]
+  
+  p22 = Sigma[(q + 1):(q + p), (q + 1):(q + p)]
+  
+  
+  p11_sqrt_inv = get_sqrt_inv(p11)
+  p22_inv = solve(p22)
+  
+  Rho = p11_sqrt_inv %*% p12 %*% p22_inv %*% p21 %*% p11_sqrt_inv
+  
+  eig = eigen(Rho)
+  
+  rho = sqrt(eig$values)
+  
+  e = -1 * eig$vectors
+  A = matrix(0, ncol = p, nrow = q)
+  B = matrix(0, ncol = p, nrow = q)
+  
+  for (i in 1:q) {
+    u = p11_sqrt_inv %*% e[, i]
+    A[i,] = u
+    
+    v_approx = p22_inv %*% p21 %*% u
+    v = as.numeric(1 / sqrt(t(v_approx) %*% p22 %*% v_approx)) * v_approx
+    B[i,] = v
+  }
+  
+  return (list(
+    rho = rho,
+    A = A,
+    B = B
+  ))
+}
+
+sample_cca_2x2 = function(R) {
+  cc = cca_2x2(R)
+  
+  A = cc$A
+  B = cc$B
+  
+  S11 = R[1:2, 1:2]
+  S12 = R[1:2, 3:4]
+  S21 = t(S12)
+  S22 = R[3:4, 3:4]
+  
+  return(c(list(
+    R_U_x1 = A %*% S11,
+    R_U_x2 = A %*% S12,
+    R_V_x1 = B %*% S21,
+    R_V_x2 = B %*% S22
+  ), cc))
+}
+```
+
+## Punto 1
+
+Considere la matriz de covarianza para el vector aleatorio:
+
+$$
+X = \begin{bmatrix}
+  X_1^{(1)} \\
+  X_2^{(1)} \\
+  X_1^{(2)} \\
+  X_2^{(2)}
+\end{bmatrix}
+$$
+$$
+\Sigma = \begin{bmatrix}
+  100 & 0 & 0 & 0 \\
+  0 & 1 & 0.95 & 0 \\
+  0 & 0.95 & 1 & 0 \\
+  0 & 0 & 0 & 100
+\end{bmatrix}
+$$
+
+
+```{r}
+p = 2 # Cantidad de variables del grupo 1
+q = 2 # Cantidad de variables del grupo 2
+Sigma = matrix(c(
+  100, 0, 0, 0,
+  0, 1, 0.95, 0,
+  0, 0.95, 1, 0,
+  0, 0, 0, 100
+), ncol = p + q)
+
+cc1 = cca_2x2(Sigma)
+
+cc1
+```
+
+#### Halle las variantes canónicas y las correlaciones canónicas.
+
+El valor de correlación canónica obtenido fue de $\hat{p_1^*}=0.95$, generando las siguientes variantes canónicas:
+
+$$
+\hat{U_1}= 0.0 X_1^{(1)} - 1.0 X_2^{(1)} \\
+\hat{V_1}= -1.0 X_1^{(2)} + 0.0 X_2^{(2)} 
+$$
+
+
+## Punto 2
+
+Considere el vector aleatorio
+
+$$
+X = \begin{bmatrix}
+  X_1^{(1)} \\
+  X_2^{(1)} \\
+  X_1^{(2)} \\
+  X_2^{(2)}
+\end{bmatrix}
+$$
+
+Con media y covarianza
+
+$$
+\mu = \begin{bmatrix}
+  -3 \\
+  2 \\
+  0 \\
+  1
+\end{bmatrix}
+$$
+$$
+\Sigma = \begin{bmatrix}
+  8 & 2 & 3 & 1 \\
+  2 & 5 & -1 & 3 \\
+  3 & -1 & 6 & -2 \\
+  1 & 3 & -2 & 7
+\end{bmatrix}
+$$
+
+#### Halle las variantes canónicas y las correlaciones canónicas.
+
+```{r}
+p = 2
+q = 2
+mu = matrix(c(-3, 2, 0, 1), nrow = p + q);
+Sigma = matrix(c(
+  8, 2, 3, 1,
+  2, 5, -1, 3,
+  3, -1, 6, -2,
+  1, 3, -2, 7
+), ncol = p + q);
+
+
+cc2 = cca_2x2(Sigma);
+
+cc2
+
+E = matrix(c(cc2$A %*% mu[1:p], cc2$B %*% mu[(p + 1): (p + q)]), ncol = 1); E
+```
+
+El primer valor de correlación canónica obtenido fue de $\hat{p_1^*}=0.5519$, generando las siguientes variantes canónicas:
+
+$$
+\hat{U_1}= 0.3168 X_1^{(1)} - 0.3622 X_2^{(1)} \\
+\hat{V_1}= 0.3647 X_1^{(2)} - 0.0950 X_2^{(2)} 
+$$
+
+El segundo valor de correlación canónica obtenido fue de $\hat{p_2^*}=0.4898$, generando las siguientes variantes canónicas:
+
+$$
+\hat{U_2}= 0.1962 X_1^{(1)} + 0.3016 X_2^{(1)} \\
+\hat{V_2}= 0.2262 X_1^{(2)} + 0.3858 X_2^{(2)} 
+$$
+
+## Punto 3
+
+En un estudio de pobreza, crimen y disuasión se reportaron observaciones de las variables aleatorias: Homicidios no primarios en 1973 $(X_1^{(1)})$, homicidios primarios en 1973 $X_2^{(1)}$, severidad de los castigos en 1970 $X_1^{(2)}$, certeza de castigo en 1970 $X_2^{(2)}$. La matriz de correlación muestral de las observaciones es la siguiente:
+
+
+$$
+R = \begin{bmatrix}
+  1 \\
+  0.615 & 1 \\
+  -0.111 & -0.195 & 1 \\
+  -0.266 & -0.085 & -0.269 & 1
+\end{bmatrix}
+$$
+
+
+#### Determine las variantes y las correlaciones canónicas muestrales y halle su correlación con las variables originales. Interprete los resultados.
+
+```{r}
+p = 2
+q = 2
+R = matrix(c(
+  1, 0.615, -0.111, -0.266,
+  0.615, 1, -0.195, -0.085,
+  -0.111, -0.195, 1, -0.269,
+  -0.266, -0.085, -0.269, 1
+), ncol = p + q);
+
+cc3 = sample_cca_2x2(R)
+
+cc3
+```
+
+El primer valor de correlación canónica obtenido fue de $\hat{p_1^*}=0.3266$, generando las siguientes variantes canónicas:
+
+$$
+\hat{U_1}= 1.0015 X_1^{(1)} - 0.0025 X_2^{(1)} \\
+\hat{V_1}= - 0.6016 X_1^{(2)} - 0.9768 X_2^{(2)} 
+$$
+
+El segundo valor de correlación canónica obtenido fue de $\hat{p_2^*}=0.1710$, generando las siguientes variantes canónicas:
+
+$$
+\hat{U_2}= - 0.7778 X_1^{(1)} + 1.2681 X_2^{(1)} \\
+\hat{V_2}= - 0.8462 X_1^{(2)} + 0.3518 X_2^{(2)} 
+$$
+
+El primer par de variantes canónicas, $\hat{U_1}$ y $\hat{V_1}$, se asocian con el primer valor de correlación canónica, $\hat{p_1^*}=0.3266$. La variante canónica $\hat{U_1}$ se compone principalmente de la variable $X_1^{(1)}$ (homicidios no primarios en 1973) con un coeficiente positivo, lo que indica que un aumento en los homicidios no primarios está asociado con un aumento en $\hat{U_1}$. Por otro lado, la variante canónica $\hat{V_1}$ se compone principalmente de la variable $X_1^{(2)}$ (severidad de los castigos en 1970) y $X_2^{(2)}$ (certeza de castigo en 1970) con coeficientes negativos. Esto sugiere que un aumento en la severidad y la certeza de los castigos está asociado con una disminución en $\hat{V_1}$.
+
+El segundo par de variantes canónicas, $\hat{U_2}$ y $\hat{V_2}$, se asocian con el segundo valor de correlación canónica, $\hat{p_2^*}=0.1710$. La variante canónica $\hat{U_2}$ se compone principalmente de la variable $X_2^{(1)}$ (homicidios primarios en 1973) con un coeficiente positivo y la variable $X_1^{(1)}$ con un coeficiente negativo. Esto sugiere que un aumento en los homicidios primarios y una disminución en los homicidios no primarios están asociados con un aumento en $\hat{U_2}$. La variante canónica $\hat{V_2}$ se compone principalmente de la variable $X_1^{(2)}$ con un coeficiente negativo y la variable $X_2^{(2)}$ con un coeficiente positivo. Esto indica que un aumento en la severidad de los castigos y una disminución en la certeza de los castigos están asociados con un aumento en $\hat{V_2}$.
